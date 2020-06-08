@@ -8,13 +8,18 @@
  * /
 /*****************************************************************************/
 
-
 #include <linux/module.h>
 #include <linux/fs.h>
 
 
-typedef struct DriverInfo {
-  dev_t dev_num;
+/*****************************************************************************/
+/** 
+ * @brief Defines struct of a virtual device
+ * 
+ *****************************************************************************/
+typedef struct 
+{
+  dev_t dev_num;      // device number
 } DriverInfo_t;
 
 DriverInfo_t gDriverInfo;
