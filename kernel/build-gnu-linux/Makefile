@@ -1,8 +1,10 @@
-EXTRA_CFLAGS = -Wall
+ROOT_DIR = /root/linux_driver/
+EXTRA_CFLAGS += -Wall
+EXTRA_CFLAGS += -I$(ROOT_DIR)/kernel/include
+
 obj-m += virtual_driver.o
 
 KDIR=/lib/modules/`uname -r`/build
-BUILD_DIR ?= $(PWD)/build-gnu-linux
 SRC_DIR = /root/linux_driver/kernel/src
 # BUILD_DIR_MAKEFILE ?= $(PWD)/build-gnu-linux/Makefile
 # -M=$(PWD) Muc chua Makefile
