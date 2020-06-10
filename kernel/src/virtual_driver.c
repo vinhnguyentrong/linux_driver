@@ -5,8 +5,8 @@
  * @name virtual_driver.hpp
  * 
  * 
- * /
-/*****************************************************************************/
+ * 
+ *****************************************************************************/
 
 #include <linux/module.h>
 #include <linux/fs.h>
@@ -31,7 +31,8 @@ static int __init virtual_driver_init(void)
   /* Register device number */
   uint32_t ret = 0;
   gDriverInfo.dev_num =MKDEV(235, 0);
-  ret = register_chrdev_region(gDriverInfo.dev_num, 1, "virtual_char_device");
+  // ret = register_chrdev_region(gDriverInfo.dev_num, 1, "virtual_char_device");
+ret = alloc_chrdev_region(&gDriverInfo.dev_num, 0, 1, "virtual_char_device");
   if (ret < 0)
   {
     printk("Failed to register device number.\n");
