@@ -14,6 +14,7 @@
 #include <linux/slab.h>       // for kmalloc and kfree function
 
 #include "virtual_driver.h"
+#include "kdb_log.h"
 
 
 /*****************************************************************************/
@@ -68,7 +69,7 @@ static int __init virtual_driver_init(void)
   ret = alloc_chrdev_region(&gDriverInfo.mDevNum, 0, 1, "virtual_char_device");
   if (ret < 0)
   {
-    printk("Failed to register device number.\n");
+    KDB_LOG_NOTE1("Failed to register device number.\n");
     goto failed_register_devnum;
   }
 
@@ -76,14 +77,14 @@ static int __init virtual_driver_init(void)
   gDriverInfo.mpDevClass = class_create(THIS_MODULE, "virtul_device_class");
   if(gDriverInfo.mpDevClass == NULL)
   {
-    printk("Failed to create a device class.\n");
+    KDB_LOG_ERR1("Failed to create a device class.\n");
     goto failed_create_class;
   }
   gDriverInfo.mpDev = device_create(gDriverInfo.mpDevClass, 
         NULL, gDriverInfo.mDevNum, NULL, "virtual_device");
   if(gDriverInfo.mpDev == NULL)
   {
-    printk("Failed to create a device.\n");
+    KDB_LOG_ERR1("Failed to create a device.\n");
     goto failed_create_device;
   }
 
@@ -91,11 +92,11 @@ static int __init virtual_driver_init(void)
   ret = vir_drv_init(&gDriverInfo);
   if(ret != 0)
   {
-    printk("Failed to initialize a virtual device.\n");
+    KDB_LOG_ERR1("Failed to initialize a virtual device.\n");
     goto failed_init_hw;
   }
 
-  printk("Initialize virtual driver successfully.\n");
+  KDB_LOG_NOTE1("Initialize virtual driver successfully.\n");
 
   return 0;
 failed_init_hw:
@@ -117,7 +118,7 @@ static void __exit virtual_driver_exit(void)
   /* unregister device number */
   unregister_chrdev_region(gDriverInfo.mDevNum, 1);
 
-  printk("Exit virtual driver successfully.\n");
+  KDB_LOG_NOTE1("Exit virtual driver successfully.\n");
 
 }
 
