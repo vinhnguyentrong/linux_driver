@@ -16,6 +16,7 @@
 int main()
 {
   printf("hello world.\n");
+  printf("This is an application.\n");
 
   return 0;
 }
