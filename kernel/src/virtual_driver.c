@@ -12,6 +12,7 @@
 #include <linux/fs.h>         // for allocate and unallocate device number
 #include <linux/device.h>     // for create device file
 #include <linux/slab.h>       // for kmalloc and kfree function
+#include <linux/cdev.h>       // for function related to cdev struct
 
 #include "virtual_driver.h"
 #include "kdb_log.h"
@@ -27,13 +28,24 @@ typedef struct
   dev_t mDevNum;      // device number
   struct class *mpDevClass;
   struct device *mpDev;
+  struct cdev   *mpDrvCdev;
   DEVICE_REGS_t *mpRegs;
   
 } DriverInfo_t;
 
 DriverInfo_t gDriverInfo;
+static uint8_t gsOpenCnt = 0;
 
 /*****************************************************************************/
+
+static int VD_Open(struct inode *inode, struct file  *file);
+static int VD_Release(struct inode *inode, struct file *file);
+
+static struct file_operations fops = {
+  .owner    = THIS_MODULE,
+  .open     = VD_Open,
+  .release    = VD_Release,
+};
 
 uint32_t vir_drv_init(DriverInfo_t *apDriverInfo)
 {
@@ -54,6 +66,20 @@ uint32_t vir_drv_init(DriverInfo_t *apDriverInfo)
   return 0;
 }
 
+static int VD_Open(struct inode *inode, struct file *file)
+{
+  gsOpenCnt++;
+  KDB_LOG_NOTE1("Virtual device open successfully."\);
+  return 0;
+}
+
+static int VD_Release(struct inode *inode, struct file *file)
+{
+  gsOpenCnt--;
+  KDB_LOG_NOTE1("Virtual device close successfully.");
+  return 0;
+}
+
 uint32_t vir_drv_exit(DriverInfo_t *apDriverInfo)
 {
   kfree(apDriverInfo->mpRegs);
@@ -64,12 +90,12 @@ static int __init virtual_driver_init(void)
 {
   /* Register device number */
   uint32_t ret = 0;
-  gDriverInfo.mDevNum =MKDEV(235, 0);
+  // gDriverInfo.mDevNum =MKDEV(235, 0);
   // ret = register_chrdev_region(gDriverInfo.mDevNum, 1, "virtual_char_device");
   ret = alloc_chrdev_region(&gDriverInfo.mDevNum, 0, 1, "virtual_char_device");
   if (ret < 0)
   {
-    KDB_LOG_NOTE1("Failed to register device number.\n");
+    KDB_LOG_NOTE1("Failed to register device number.");
     goto failed_register_devnum;
   }
 
@@ -77,14 +103,14 @@ static int __init virtual_driver_init(void)
   gDriverInfo.mpDevClass = class_create(THIS_MODULE, "virtul_device_class");
   if(gDriverInfo.mpDevClass == NULL)
   {
-    KDB_LOG_ERR1("Failed to create a device class.\n");
+    KDB_LOG_ERR1("Failed to create a device class.");
     goto failed_create_class;
   }
   gDriverInfo.mpDev = device_create(gDriverInfo.mpDevClass, 
         NULL, gDriverInfo.mDevNum, NULL, "virtual_device");
   if(gDriverInfo.mpDev == NULL)
   {
-    KDB_LOG_ERR1("Failed to create a device.\n");
+    KDB_LOG_ERR1("Failed to create a device.");
     goto failed_create_device;
   }
 
@@ -92,13 +118,31 @@ static int __init virtual_driver_init(void)
   ret = vir_drv_init(&gDriverInfo);
   if(ret != 0)
   {
-    KDB_LOG_ERR1("Failed to initialize a virtual device.\n");
+    KDB_LOG_ERR1("Failed to initialize a virtual device.");
     goto failed_init_hw;
   }
 
-  KDB_LOG_NOTE1("Initialize virtual driver successfully.\n");
+  /* Register entry points to kernel */
+  gDriverInfo.mpDrvCdev = cdev_alloc();
+  if(gDriverInfo.mpDrvCdev == NULL)
+  {
+    KDB_LOG_ERR1("Failed to allocate cdev structure.");
+    goto failed_allocate_cdev;
+  }
+  cdev_init(gDriverInfo.mpDrvCdev, &fops);
+  ret = cdev_add(gDriverInfo.mpDrvCdev, gDriverInfo.mDevNum, 1);
+  if(ret < 0)
+  {
+    KDB_LOG_ERR1("Failed to add a char device to the system.");
+    goto failed_allocate_cdev;
+  }
+
+  KDB_LOG_NOTE1("Initialize virtual driver successfully.");
 
   return 0;
+
+failed_allocate_cdev:
+  cdev_del(gDriverInfo.mpDrvCdev);
 failed_init_hw:
   vir_drv_exit(&gDriverInfo);
 failed_create_device:
@@ -111,6 +155,9 @@ failed_register_devnum:
 
 static void __exit virtual_driver_exit(void)
 {
+  /* release entry points */
+  cdev_del(gDriverInfo.mpDrvCdev);
+  /* free memory of hardware */
   vir_drv_exit(&gDriverInfo);
   /* delete device file */
   device_destroy(gDriverInfo.mpDevClass, gDriverInfo.mDevNum);
@@ -118,7 +165,7 @@ static void __exit virtual_driver_exit(void)
   /* unregister device number */
   unregister_chrdev_region(gDriverInfo.mDevNum, 1);
 
-  KDB_LOG_NOTE1("Exit virtual driver successfully.\n");
+  KDB_LOG_NOTE1("Exit virtual driver successfully.");
 
 }
 
