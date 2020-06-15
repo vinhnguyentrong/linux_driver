@@ -112,4 +112,21 @@ typedef struct DEVICE_REGS
   WRITE_CNT_REG_t       mWRITE_CNT;    // 0x0104 - write counter register
 } DEVICE_REGS_t;
 
+typedef struct 
+{
+  dev_t mDevNum;      // device number
+  struct class *mpDevClass;
+  struct device *mpDev;
+  struct cdev   *mpDrvCdev;
+  DEVICE_REGS_t *mpRegs;
+  
+} DriverInfo_t;
+
+typedef enum
+{
+  VIR_DRV_SUCCESS = 0,
+  VIR_DRV_FAILURE = 1,
+  VIR_DRV_SIZE = 0x7fffffffUL,
+}VIR_DRV_RESULT;
+
 #endif /* VIRTUAL_DRIVER_H */

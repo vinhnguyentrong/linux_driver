@@ -13,9 +13,11 @@
 #include <linux/device.h>     // for create device file
 #include <linux/slab.h>       // for kmalloc and kfree function
 #include <linux/cdev.h>       // for function related to cdev struct
+#include <linux/uaccess.h>    // comm func between userspace and kernel space
 
 #include "virtual_driver.h"
 #include "kdb_log.h"
+#include "vird_func.h"
 
 
 /*****************************************************************************/
@@ -23,33 +25,26 @@
  * @brief Defines struct of a virtual device
  * 
  *****************************************************************************/
-typedef struct 
-{
-  dev_t mDevNum;      // device number
-  struct class *mpDevClass;
-  struct device *mpDev;
-  struct cdev   *mpDrvCdev;
-  DEVICE_REGS_t *mpRegs;
-  
-} DriverInfo_t;
-
 DriverInfo_t gDriverInfo;
 static uint8_t gsOpenCnt = 0;
 
 /*****************************************************************************/
 
-static int VD_Open(struct inode *inode, struct file  *file);
-static int VD_Release(struct inode *inode, struct file *file);
-
+static int virt_open(struct inode *inode, struct file  *file);
+static int virt_release(struct inode *inode, struct file *file);
+static ssize_t write_callback(struct file *apFile, const uint8_t *apcData,
+          size_t aSize, loff_t *apOff);
 static struct file_operations fops = {
   .owner    = THIS_MODULE,
-  .open     = VD_Open,
-  .release    = VD_Release,
+  .write    = write_callback,
+  .open     = virt_open,
+  .release  = virt_release,
 };
 
 uint32_t vir_drv_init(DriverInfo_t *apDriverInfo)
 {
   uint16_t *lpBuffer = NULL;
+  /* allocate memory for device */
   lpBuffer = kzalloc(sizeof(DEVICE_REGS_t), GFP_KERNEL);
   if(lpBuffer == NULL)
   {
@@ -66,14 +61,14 @@ uint32_t vir_drv_init(DriverInfo_t *apDriverInfo)
   return 0;
 }
 
-static int VD_Open(struct inode *inode, struct file *file)
+static int virt_open(struct inode *inode, struct file *file)
 {
   gsOpenCnt++;
   KDB_LOG_NOTE1("Virtual device open successfully."\);
   return 0;
 }
 
-static int VD_Release(struct inode *inode, struct file *file)
+static int virt_release(struct inode *inode, struct file *file)
 {
   gsOpenCnt--;
   KDB_LOG_NOTE1("Virtual device close successfully.");
